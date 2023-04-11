@@ -1,3 +1,4 @@
+const { reset } = require("nodemon");
 var dbmodel = require("../model/dbmodel");
 var User = dbmodel.User.model("Users");
 var Webs = dbmodel.User.model("Webs");
@@ -319,6 +320,18 @@ function gtime(str) {
     str.substring(0, 4) + str.substring(5, 7) + str.substring(8, 10)
   );
 }
+// 获取月份天数
+function getMonthLength(year, month) {
+  return new Date(year, month, 0).getDate();
+}
+// 计算百分比
+function percent(a, b) {
+  var precent = (Number(a) / Number(b)) * 10000;
+  var round = Math.round(precent) / 100;
+  var res = round + "%";
+  return res;
+}
+
 var getAlllogs = function (req, res) {
   let { page, limit, AttackType, selectTime } = req;
   page = Number(page);
@@ -361,7 +374,6 @@ var getAlllogs = function (req, res) {
       gl = gtime(selectTime[0]);
       lt = gtime(selectTime[1]);
     }
-    // Log.find({ timenumber: { $gte: gl, $lte: lt }}).then((log)=>{console.log(log)}).catch((err)=>{console.log(err)})
     if (AttackType == "") {
       console.log("noAttackType");
       Log.find({ timenumber: { $gte: gl, $lte: lt } })
@@ -437,21 +449,200 @@ var getAlllogs = function (req, res) {
       });
   }
 };
-// 获取总访问数量
+ // if (days == 6) {
+    //   // 本周
+    //   // 假如日是月前7天
+    //   console.log('上一周变化')
+    //   if (Number(times[0].substring(8, 10)) <= 7) {
+    //     var year = times[0].substring(0, 4);
+    //     var month =
+    //       times[0].substring(5, 6) + (Number(times[0].substring(6, 7)) - 1);
+    //     var da =  getMonthLength(year, month);
+    //     glo = Number(
+    //       times[0].substring(0, 4) +
+    //         times[0].substring(5, 6) +
+    //         (Number(times[0].substring(6, 7)) - 1) +
+    //         (da - 7 + Number(times[0].substring(9, 10)))
+    //     );
+    //     lto = Number(
+    //       times[1].substring(0, 4) +
+    //         times[1].substring(5, 6) +
+    //         (Number(times[1].substring(6, 7)) - 1) +
+    //         (da - 7 + Number(times[1].substring(9, 10)))
+    //     );
+    //   } else {
+    //     console.log('aaaa')
+    //     glo = gl - 7;
+    //     lto = lt - 7;
+    //   }
+    //   contrast = '与上一周相比访问变化'
+    // }
+// 获取访问数量 有无日期和数量都能处理
 var getAllVisit = function (req, res) {
-  let { VisitType } = req;
-  console.log(req)
-  console.log(VisitType);
-  if (VisitType) {
-    if (VisitType == "errLog") {
+  let { VisitType, times } = req;
   
-      VisitType = {$ne: "Normal access"}
-      Log.find({attack_method:VisitType}).count().then((total)=>{
-     res.send({total})
-      }).catch(()=>{})
+  // 返回数量
+  let c 
+  // 返回变化量
+  let percentage = 0;
+  let contrast = ''
+  // 有搜索条件
+  if (VisitType || times) {
+    // 有条件无日期时候
+    if (times == undefined) {
+      console.log("有条件没日期");
+      // 异常条件时候
+      if (VisitType == "Errlogs") {
+        console.log('err')
+        VisitType = { $ne: "Normal access" };
+        Log.find({ attack_method: VisitType })
+        .count()
+        .then((total) => {
+            res.send({ total });
+          })
+          .catch(() => {});
+      } else {
+        Log.find({ attack_method: VisitType })
+          .count()
+          .then((total) => {
+            res.send({ total });
+          })
+          .catch(() => {});
+      }
+    }
+    // 有时间限制没有搜索条件
+    var gl, lt, days;
+    var glo,lto
+    if (times) {
+      gl = gtime(times[0]);
+      lt = gtime(times[1]);
+      days = lt - gl;
+    }
+    if(days == 0){
+      glo = gl
+      lto  = lt
+      contrast = '与上一天相比访问变化'
+    }
+   
+    if (days == 6) {
+      // 本周
+      // 假如日是月前7天
+      console.log('上一周变化')
+      if (Number(times[0].substring(8, 10)) <= 7) {
+        var year = times[0].substring(0, 4);
+        var month =
+          times[0].substring(5, 6) + (Number(times[0].substring(6, 7)) - 1);
+        var da =  getMonthLength(year, month);
+        glo = Number(
+          times[0].substring(0, 4) +
+            times[0].substring(5, 6) +
+            (Number(times[0].substring(6, 7)) - 1) +
+            (da - 7 + Number(times[0].substring(9, 10)))
+        );
+        lto = Number(
+          times[1].substring(0, 4) +
+            times[1].substring(5, 6) +
+            (Number(times[1].substring(6, 7)) - 1) +
+            (da - 7 + Number(times[1].substring(9, 10)))
+        );
+      } else {
+        console.log('aaaa')
+        glo = gl - 7;
+        lto = lt - 7;
+      }
+      contrast = '与上一周相比访问变化'
     } else {
+      glo = gl;
+      lto = lt;
+    }
+    if (days > 27 && days < 1100) {
+      // 本月
+      console.log("本月");
+      var year = times[0].substring(0, 4);
+      var month =
+        times[0].substring(5, 6) + (Number(times[0].substring(6, 7)) - 1);
+      days = getMonthLength(year, month);
+      glo = gl - Number(1 + times[0].substring(8, 10));
+      lto = gl + days;
+      contrast = '与上一月相比访问变化'
+    }
+    if (days > 1100) {
+      // 本年
+      glo = Number(Number(times[0].substring(0, 4) - 1) + "0101");
+      lto = Number(Number(times[0].substring(0, 4) - 1) + "1231");
+      contrast = '与上一年相比访问变化'
+    }
+    // 有时间没有攻击类型的搜索结果
+    if (VisitType == "") {
+      console.log("noAttackType");
+      // 这段时间的访问量
+      console.log("gl =",gl,"lt =",lt,"glo =",glo,"lto =",lto)
+      Log.find({ timenumber: { $gte: gl, $lte: lt } })
+        .count()
+        .then((total) => {
+          // console.log("没有攻击条件这段时间访问量 = ", total)
+          c = total;
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+      //  上一段时间访问量
+      console.log("gl =",gl,"lt =",lt,"glo =",glo,"lto =",lto)
+      setTimeout(() => {
+        Log.find({
+          timenumber: { $gte: glo, $lte: lto },
+        })
+          .count()
+          .then((total) => {
+            percentage = percent(c,total)
+            console.log("无条件有时间上一段访问量 ="+total)
+            res.send({total:c,contrast,percentage})
+          })
+          .catch((err) => {
+            console.log(err);
+          });
+      }, 50);
+    }
+    // 两种条件都有时
+    if(VisitType && times){
+      if (VisitType == "Errlogs") {
+        VisitType = { $ne: "Normal access" };
+      }
+      // 当前日志数量
+      console.log("gl =",gl,"lt =",lt,"glo =",glo,"lto =",lto)
+      Log.find({
+        attack_method: VisitType,
+        timenumber: { $gte: gl, $lte: lt },
+      })
+        .count()
+        .then((total) => {
+          console.log('两个都有时间和类型错误 =',total)
+          c = total;
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+      // 对比日志数量
+      console.log("gl =",gl,"lt =",lt,"glo =",glo,"lto =",lto)
+      setTimeout(() => {
+        Log.find({
+          attack_method: VisitType,
+          timenumber: { $gte: glo, $lte: lto },
+        })
+          .count()
+          .then((total) => {
+            console.log("都有错误对比上回"+total)
+            percentage = percent(c,total)
+            res.send({total:c,contrast,percentage})
+          })
+          .catch((err) => {
+            console.log(err);
+          });
+      }, 50);
     }
   } else {
+    // 无条件
+    console.log('无条件')
     Log.find()
       .count()
       .then((total) => {
