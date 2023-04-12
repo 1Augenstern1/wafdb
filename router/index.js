@@ -141,6 +141,19 @@ router.get("/getblackIPList", (req,res)=>{
 //   console.log('getblack_IPList')
 //   dbserver.getblack_IPList(req.query,res)
 // })
+
+
+// 查找规定时间段内的攻击数
+router.get("/getlogranking", (req,res)=>{
+  console.log('getlogranking')
+  dbserver.getlogranking(req.query,res)
+})
+// 查找规定时间段内各种攻击数类型与排行
+router.get("/getAttckranking", (req,res)=>{
+  console.log('getAttckranking')
+  dbserver.getAttckranking(req.query,res)
+})
+
 module.exports = {
   router,
   woll,
