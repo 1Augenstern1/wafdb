@@ -154,6 +154,27 @@ router.get("/getAttckranking", (req,res)=>{
   dbserver.getAttckranking(req.query,res)
 })
 
+
+// 查找触发的规则排名
+router.get("/getRuleRangking", (req,res)=>{
+  console.log('getRuleRangking')
+  dbserver.getRuleRangking(req.query,res)
+})
+router.get("/getvisitIp", (req,res)=>{
+  console.log('getvisitIp')
+  dbserver.getvisitIp(req.query,res)
+})
+// 查找规则表中的规则
+router.get("/getRuleList", (req,res)=>{
+  console.log('getRuleList')
+  dbserver.getRuleList(req.query,res)
+})
+
+router.post("/putRule" , (req,res)=>{
+  console.log('putRule')
+  dbserver.putRule(req.body,res)
+})
+
 module.exports = {
   router,
   woll,

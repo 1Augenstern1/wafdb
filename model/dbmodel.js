@@ -45,17 +45,25 @@ var blackips = new Schema({
 	setuser:{type:String},
 	settime:{type:String},
 })
+var rules = new Schema({
+	setuser:{type:String},
+	RuleType:{type:String},
+	settime:{type:String},
+	rule:{type:String}
+})
 var User = db.model('Users', SchemaUser)
 var Webs = db.model('Webs', webs)
 var Roles = db.model('Roles',roles)
 var Logs = db.model('Logs',logs)
 var Whiteips = db.model('Whiteips',whiteips)
 var Blackips = db.model('Blackips',blackips)
+var Rules = db.model('Rules',rules)
 module.exports = {
 	User,
 	Webs,
 	Roles,
 	Logs,
 	Whiteips,
-	Blackips
+	Blackips,
+	Rules
 }
