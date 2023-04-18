@@ -174,6 +174,11 @@ router.post("/putRule" , (req,res)=>{
   console.log('putRule')
   dbserver.putRule(req.body,res)
 })
+// 删除规则通过id
+router.post("/removeRuleByid" , (req,res)=>{
+  console.log('removeRuleByid')
+  dbserver.removeRuleByid(req.body,res)
+})
 
 module.exports = {
   router,

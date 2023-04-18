@@ -6,7 +6,7 @@ var role = dbmodel.User.model("Roles");
 var Log = dbmodel.User.model("Logs");
 var Whiteips = dbmodel.User.model("Whiteips");
 var Blackips = dbmodel.User.model("Blackips");
-var Rule = dbmodel.User.model("Rules")
+var Rule = dbmodel.User.model("Rules");
 var login = function (req, res) {
   let { account, password } = req;
   User.find({ account, password })
@@ -741,11 +741,24 @@ var getlogranking = function (req, res) {
         })
         .catch((err) => console.log(res));
     }
-    arr = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月']
+    arr = [
+      "一月",
+      "二月",
+      "三月",
+      "四月",
+      "五月",
+      "六月",
+      "七月",
+      "八月",
+      "九月",
+      "十月",
+      "十一月",
+      "十二月",
+    ];
   }
 
   setTimeout(() => {
-    res.send({ errdata: Res ,time:arr});
+    res.send({ errdata: Res, time: arr });
   }, 100);
 };
 var getAttckranking = function (req, res) {
@@ -880,70 +893,70 @@ var removeWhiteIps = function (req, res) {
   res.send("ok");
 };
 
-
-
-
-
 // 查找触发的规则排名
 
-var getRuleRangking =function(req,res){
-
+var getRuleRangking = function (req, res) {
   Log.aggregate([
     {
       $group: {
-      _id: "$rule_tag",
-        count: { $sum: 1 }
-      }
+        _id: "$rule_tag",
+        count: { $sum: 1 },
+      },
     },
     {
-      $sort: { count: -1 }
+      $sort: { count: -1 },
     },
     {
-    $limit: 100
-    }
-  ]).then((obj)=>{
-      console.log(obj)
-      res.send(obj)
-  }).catch((err)=>{
-    console.log(err)
-  })
-}
+      $limit: 100,
+    },
+  ])
+    .then((obj) => {
+      console.log(obj);
+      res.send(obj);
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+};
 // 查找访问ip的次数
-var getvisitIp = function(req,res){
+var getvisitIp = function (req, res) {
   Log.aggregate([
     {
       $group: {
-      _id: "$client_ip",
-        count: { $sum: 1 }
-      }
+        _id: "$client_ip",
+        count: { $sum: 1 },
+      },
     },
     {
-      $sort: { count: -1 }
+      $sort: { count: -1 },
     },
     {
-    $limit: 100
-    }
-  ]).then((obj)=>{
-      console.log(obj)
-      res.send(obj)
-  }).catch((err)=>{
-    console.log(err)
-  })
-}
+      $limit: 100,
+    },
+  ])
+    .then((obj) => {
+      console.log(obj);
+      res.send(obj);
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+};
 
 // 查找规则表
-var getRuleList = function(req,res){
-  let { page, limit, RuleType } = req;
+var getRuleList = function (req, res) {
+  let { page, limit, RuleType, searchRule } = req;
   page = Number(page);
   limit = Number(limit);
   console.log(page, limit);
   console.log(RuleType);
   let skiptotal = (page - 1) * limit;
   // 当有搜索条件时候
-  if (RuleType) {
+  console.log(searchRule);
+  if (searchRule) {
     console.log("有搜索条件");
     var c = 0;
-    Rule.find({ RuleType: RuleType })
+    Rule.find({ RuleType: RuleType, rule: searchRule })
       .count()
       .then((total) => {
         c = total;
@@ -952,33 +965,57 @@ var getRuleList = function(req,res){
         console.log(err);
       });
     setTimeout(() => {
-      Rule.find({ RuleType: RuleType }).limit(limit)
-      .skip(skiptotal)
+      Rule.find({ RuleType: RuleType, rule: searchRule })
+        .limit(limit)
+        .skip(skiptotal)
         .then((Rululist) => {
-          console.log(Rululist)
+          console.log(Rululist);
           res.send({ total: c, Rululist });
         })
         .catch((err) => {
           console.log(err);
         });
     }, 100);
-  } 
-}
-
-var putRule = function(req,res){
-  let {arr} = req
-  let ruleinfo = {}
-  let re
-  ruleinfo['settime'] = '2023-04-08 18:12:36'
-  ruleinfo['RuleType'] = 'Deny_Post'
-  ruleinfo['setuser'] = 'admin'
-  console.log(arr.length)
-  for(let i = 0;i<arr.length;i++){
-    ruleinfo['rule'] = arr[i]
-     re = new Rule(ruleinfo)
-     console.log(re)
-    // re.save()
+  } else {
+    let b = 0;
+    Rule.find({ RuleType: RuleType })
+      .count()
+      .then((total) => {
+        b = total;
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+    setTimeout(() => {
+      Rule.find({ RuleType: RuleType })
+        .limit(limit)
+        .skip(skiptotal)
+        .then((Rululist) => {
+          console.log(Rululist);
+          res.send({ total: b, Rululist });
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+    }, 100);
   }
+};
+
+var putRule = function (req, res) {
+  let { arr } = req;
+  re = new Rule(arr);
+  re.save();
+  res.send("ok");
+};
+var removeRuleByid = function(req,res){
+  let {id} = req
+  Rule.deleteOne({ _id:id })
+    .then((information) => {
+      res.send(information);
+    })
+    .catch((err) => {
+      console.log(err);
+    });
 }
 module.exports = {
   login,
@@ -1012,6 +1049,7 @@ module.exports = {
   getRuleRangking,
   getvisitIp,
   getRuleList,
-  putRule
+  putRule,
+  removeRuleByid
   //changedata
 };
