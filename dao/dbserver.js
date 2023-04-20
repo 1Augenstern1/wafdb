@@ -327,10 +327,36 @@ function getMonthLength(year, month) {
 }
 // 计算百分比
 function percent(a, b) {
+  if (a == 0 && b == 0) {
+    return 0;
+  }
+  if (a == 0) {
+    a = 1;
+  }
+  if (b == 0) {
+    b = 1;
+  }
+  console.log('a是=',a,'b是',b)
+  var trend = ''
+  
   var precent = (Number(a) / Number(b)) * 10000;
   var round = Math.round(precent) / 100;
+
+  if (a > b) {
+    // 增加
+    round =  round - 100
+    trend = 'add'
+  }else{
+    round =  100 - round
+    trend = 'down'
+  }
+  round = round.toFixed(2)
   var res = round + "%";
-  return res;
+  var obj = {
+    res:res,
+    trend:trend
+  }
+  return obj;
 }
 
 var getAlllogs = function (req, res) {
@@ -453,7 +479,6 @@ var getAlllogs = function (req, res) {
 // 获取访问数量 有无日期和数量都能处理
 var getAllVisit = function (req, res) {
   let { VisitType, times } = req;
-
   // 返回数量
   let c;
   // 返回变化量
@@ -500,7 +525,7 @@ var getAllVisit = function (req, res) {
     if (days == 6) {
       // 本周
       // 假如日是月前7天
-      console.log("上一周变化");
+      // console.log("上一周变化");
       if (Number(times[0].substring(8, 10)) <= 7) {
         var year = times[0].substring(0, 4);
         var month =
@@ -519,7 +544,6 @@ var getAllVisit = function (req, res) {
             (da - 7 + Number(times[1].substring(9, 10)))
         );
       } else {
-        console.log("aaaa");
         glo = gl - 7;
         lto = lt - 7;
       }
@@ -547,9 +571,9 @@ var getAllVisit = function (req, res) {
     }
     // 有时间没有攻击类型的搜索结果
     if (VisitType == "") {
-      console.log("noAttackType");
+      // console.log("noAttackType");
       // 这段时间的访问量
-      console.log("gl =", gl, "lt =", lt, "glo =", glo, "lto =", lto);
+      // console.log("gl =", gl, "lt =", lt, "glo =", glo, "lto =", lto);
       Log.find({ timenumber: { $gte: gl, $lte: lt } })
         .count()
         .then((total) => {
@@ -560,7 +584,7 @@ var getAllVisit = function (req, res) {
           console.log(err);
         });
       //  上一段时间访问量
-      console.log("gl =", gl, "lt =", lt, "glo =", glo, "lto =", lto);
+      // console.log("gl =", gl, "lt =", lt, "glo =", glo, "lto =", lto);
       setTimeout(() => {
         Log.find({
           timenumber: { $gte: glo, $lte: lto },
@@ -568,8 +592,11 @@ var getAllVisit = function (req, res) {
           .count()
           .then((total) => {
             percentage = percent(c, total);
-            console.log("无条件有时间上一段访问量 =" + total);
-            res.send({ total: c, contrast, percentage });
+            var value = percentage.res
+            var trend = percentage.trend
+            console.log("数值是 =",value,"趋势是",trend)
+            // console.log("无条件有时间上一段访问量 =" + total);
+            res.send({ total: c, contrast, value, trend});
           })
           .catch((err) => {
             console.log(err);
@@ -582,21 +609,21 @@ var getAllVisit = function (req, res) {
         VisitType = { $ne: "Normal access" };
       }
       // 当前日志数量
-      console.log("gl =", gl, "lt =", lt, "glo =", glo, "lto =", lto);
+      // console.log("gl =", gl, "lt =", lt, "glo =", glo, "lto =", lto);
       Log.find({
         attack_method: VisitType,
         timenumber: { $gte: gl, $lte: lt },
       })
         .count()
         .then((total) => {
-          console.log("两个都有时间和类型错误 =", total);
+          // console.log("两个都有时间和类型错误 =", total);
           c = total;
         })
         .catch((err) => {
           console.log(err);
         });
       // 对比日志数量
-      console.log("gl =", gl, "lt =", lt, "glo =", glo, "lto =", lto);
+      // console.log("gl =", gl, "lt =", lt, "glo =", glo, "lto =", lto);
       setTimeout(() => {
         Log.find({
           attack_method: VisitType,
@@ -604,9 +631,12 @@ var getAllVisit = function (req, res) {
         })
           .count()
           .then((total) => {
-            console.log("都有错误对比上回" + total);
+            // console.log("都有错误对比上回" + total);
             percentage = percent(c, total);
-            res.send({ total: c, contrast, percentage });
+            var value = percentage.res
+            var trend = percentage.trend
+            console.log("数值是 =",value,"趋势是",trend)
+            res.send({ total: c, contrast, value, trend});
           })
           .catch((err) => {
             console.log(err);
@@ -615,7 +645,7 @@ var getAllVisit = function (req, res) {
     }
   } else {
     // 无条件
-    console.log("无条件");
+    // console.log("无条件");
     Log.find()
       .count()
       .then((total) => {
@@ -626,23 +656,6 @@ var getAllVisit = function (req, res) {
       });
   }
 };
-// var changedata = function(req,res){
-//   Log.find().then((logs)=>{
-//     var time = 1
-//     var lgs = JSON.parse(JSON.stringify(logs))
-//     // console.log(lgs)
-//     var str,num,id
-//     for(let i =0 ;i<logs.length;i++){
-//       id = lgs[i]._id
-//       str = lgs[i].local_time
-//       num = Number(str.substring(0, 4) + str.substring(5, 7) + str.substring(8, 10))
-//       lgs[i]['timenumber'] = num
-//       Log.findOneAndUpdate({_id:id},{$set:{timenumber:num}}).then((ok)=>console.log("ok")).catch(err=>{console.log(err)})
-//     }
-//     // console.log(lgs)
-//   }).catch((err)=>console.log(err))
-// }
-
 // 添加白名单
 // 查找白名单
 var getwhiteIPList = function (req, res) {
@@ -907,7 +920,7 @@ var getRuleRangking = function (req, res) {
       $sort: { count: -1 },
     },
     {
-      $limit: 100,
+      $limit: 7,
     },
   ])
     .then((obj) => {
@@ -1007,16 +1020,16 @@ var putRule = function (req, res) {
   re.save();
   res.send("ok");
 };
-var removeRuleByid = function(req,res){
-  let {id} = req
-  Rule.deleteOne({ _id:id })
+var removeRuleByid = function (req, res) {
+  let { id } = req;
+  Rule.deleteOne({ _id: id })
     .then((information) => {
       res.send(information);
     })
     .catch((err) => {
       console.log(err);
     });
-}
+};
 module.exports = {
   login,
   findweb,
@@ -1050,6 +1063,6 @@ module.exports = {
   getvisitIp,
   getRuleList,
   putRule,
-  removeRuleByid
+  removeRuleByid,
   //changedata
 };
