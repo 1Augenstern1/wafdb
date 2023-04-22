@@ -567,6 +567,7 @@ var getAllVisit = function (req, res) {
       // 本年
       glo = Number(Number(times[0].substring(0, 4) - 1) + "0101");
       lto = Number(Number(times[0].substring(0, 4) - 1) + "1231");
+      console.log(glo,lto)
       contrast = "与上一年相比访问变化";
     }
     // 有时间没有攻击类型的搜索结果
@@ -685,8 +686,8 @@ var getwhiteIPList = function (req, res) {
       });
     setTimeout(() => {
       Whiteips.find({ ip: searchip })
-        .then((roles) => {
-          res.send({ total: c, roles });
+        .then((whiteiplist) => {
+          res.send({ total: c, whiteiplist });
         })
         .catch((err) => {
           console.log(err);
@@ -717,22 +718,25 @@ var getwhiteIPList = function (req, res) {
 var getlogranking = function (req, res) {
   let { time } = req;
   let arr = [];
-  let Res = [];
   let Monthstart = [];
   let Monthend = [];
   let strat = gtime(time[0]);
   let end = gtime(time[1]);
+  console.log("strat = ", strat,"end=",end)
   let days = end - strat;
+  let Res = new Array(days);
   let AttackType = { $ne: "Normal access" };
   if (days <= 31) {
     for (let i = 0; i <= days; i++) {
       arr.push(strat + i);
     }
+    console.log(arr)
     for (let i = 0; i < arr.length; i++) {
       Log.find({ attack_method: AttackType, timenumber: arr[i] })
         .count()
         .then((count) => {
-          Res.push(count);
+          console.log(i)
+          Res[i] = count;
         })
         .catch((err) => console.log(res));
     }
@@ -750,7 +754,7 @@ var getlogranking = function (req, res) {
         .count()
         .then((count) => {
           console.log(count);
-          Res.push(count);
+          Res[i]= count;
         })
         .catch((err) => console.log(res));
     }
@@ -778,14 +782,14 @@ var getAttckranking = function (req, res) {
   let { time, Type } = req;
   let gl = gtime(time[0]);
   let lt = gtime(time[1]);
-  let Attcktype = [];
-  let Res = [];
+  let Attcktype = new Array(7);
+  let Res = new Array(7);
   for (let i = 0; i < Type.length; i++) {
     Log.find({ attack_method: Type[i], timenumber: { $gte: gl, $lte: lt } })
       .count()
       .then((count) => {
-        Attcktype.push(Type[i]);
-        Res.push(count);
+        Attcktype[i]=Type[i];
+        Res[i] = count;
       })
       .catch((err) => console.log(res));
   }
