@@ -336,26 +336,26 @@ function percent(a, b) {
   if (b == 0) {
     b = 1;
   }
-  console.log('a是=',a,'b是',b)
-  var trend = ''
-  
+  console.log("a是=", a, "b是", b);
+  var trend = "";
+
   var precent = (Number(a) / Number(b)) * 10000;
   var round = Math.round(precent) / 100;
 
   if (a > b) {
     // 增加
-    round =  round - 100
-    trend = 'add'
-  }else{
-    round =  100 - round
-    trend = 'down'
+    round = round - 100;
+    trend = "add";
+  } else {
+    round = 100 - round;
+    trend = "down";
   }
-  round = round.toFixed(2)
+  round = round.toFixed(2);
   var res = round + "%";
   var obj = {
-    res:res,
-    trend:trend
-  }
+    res: res,
+    trend: trend,
+  };
   return obj;
 }
 
@@ -508,46 +508,75 @@ var getAllVisit = function (req, res) {
           .catch(() => {});
       }
     }
-    // 有时间限制没有搜索条件
-    var gl, lt, days;
-    var glo, lto;
+    var gl, lt, days; // gt是选着时间的开始 lt是选着时间的结束 days是相差天数
+    var glo, lto; // glo是对比的时间开始 lto是对比的时间结束
+    var da; //上个月的天数
     if (times) {
+      // 有时间限制没有搜索条件
+      var startdate = Number(times[0].substring(8, 10)); // 开始日
+      var enddate = Number(times[1].substring(8, 10)); // 结束日
+      var startmonth =
+        times[0].substring(5, 7); //开始月
+      var endmonth = times[1].substring(5, 7); //结束月
+      var startyear = times[0].substring(0, 4); //开始年
+      var endyear = times[1].substring(0, 4); //结束年
+      // 获取上个月天数
       gl = gtime(times[0]);
       lt = gtime(times[1]);
-      days = lt - gl;
+      if (startmonth == endmonth) {
+        da = getMonthLength(startyear, startmonth - 1);
+        days = enddate - startdate;
+      } else {
+        da = getMonthLength(startyear, startmonth);
+        days = da - startdate + enddate;
+      }
+      console.log("startmonth = ", startmonth, "endmonth =", endmonth);
+      console.log("startdate = ", startdate, "enddate =", enddate);
+      console.log("days = ", days);
     }
+    console.log("gl 和 lt", gl, lt);
+    // 假如选择的是一天
     if (days == 0) {
       glo = gl;
       lto = lt;
       contrast = "与上一天相比访问变化";
     }
 
-    if (days == 6) {
-      // 本周
-      // 假如日是月前7天
-      // console.log("上一周变化");
-      if (Number(times[0].substring(8, 10)) <= 7) {
-        var year = times[0].substring(0, 4);
-        var month =
-          times[0].substring(5, 6) + (Number(times[0].substring(6, 7)) - 1);
-        var da = getMonthLength(year, month);
-        glo = Number(
-          times[0].substring(0, 4) +
-            times[0].substring(5, 6) +
-            (Number(times[0].substring(6, 7)) - 1) +
-            (da - 7 + Number(times[0].substring(9, 10)))
-        );
-        lto = Number(
-          times[1].substring(0, 4) +
-            times[1].substring(5, 6) +
-            (Number(times[1].substring(6, 7)) - 1) +
-            (da - 7 + Number(times[1].substring(9, 10)))
-        );
+    if (startdate < days || enddate < days || startmonth != endmonth || days<=27) {
+      if (startdate <= days) {
+        console.log("1");
+        glo = da - (days - startdate) - 1;
+        startmonth = "0" + (startmonth-1)
       } else {
-        glo = gl - 7;
-        lto = lt - 7;
+        glo = startdate - days - 1;
+
       }
-      contrast = "与上一周相比访问变化";
+      if (enddate <= days) {
+        console.log("2");
+        lto = da - (days - enddate) - 1;
+        endmonth = "0" + (endmonth-1)
+      } else {
+        lto = enddate - days - 1;
+      }
+      if(glo == 0){
+        glo = da
+        startmonth = "0" + (startmonth-1)
+      }
+      if(lto == 0){
+        lto = da
+        endmonth = "0" + (endmonth-1)
+      }
+      console.log("下雨一星期内的 glo 和 lto", glo, lto);
+      console.log("下雨一星期内的 startmonth 和 endmonth", startmonth, endmonth);
+      glo = Number(startyear+startmonth+ glo)
+      lto = Number(endyear+endmonth+lto)
+      console.log("下雨一星期内的 glo 和 lto", glo, lto);
+      if(days== 6){
+        contrast = "与上一周相比访问变化";
+      }
+      else{
+        contrast = "与上一段时间相比访问变化"
+      }
     } else {
       glo = gl;
       lto = lt;
@@ -567,7 +596,7 @@ var getAllVisit = function (req, res) {
       // 本年
       glo = Number(Number(times[0].substring(0, 4) - 1) + "0101");
       lto = Number(Number(times[0].substring(0, 4) - 1) + "1231");
-      console.log(glo,lto)
+      console.log(glo, lto);
       contrast = "与上一年相比访问变化";
     }
     // 有时间没有攻击类型的搜索结果
@@ -593,11 +622,11 @@ var getAllVisit = function (req, res) {
           .count()
           .then((total) => {
             percentage = percent(c, total);
-            var value = percentage.res
-            var trend = percentage.trend
-            console.log("数值是 =",value,"趋势是",trend)
+            var value = percentage.res;
+            var trend = percentage.trend;
+            console.log("数值是 =", value, "趋势是", trend);
             // console.log("无条件有时间上一段访问量 =" + total);
-            res.send({ total: c, contrast, value, trend});
+            res.send({ total: c, contrast, value, trend });
           })
           .catch((err) => {
             console.log(err);
@@ -634,10 +663,10 @@ var getAllVisit = function (req, res) {
           .then((total) => {
             // console.log("都有错误对比上回" + total);
             percentage = percent(c, total);
-            var value = percentage.res
-            var trend = percentage.trend
-            console.log("数值是 =",value,"趋势是",trend)
-            res.send({ total: c, contrast, value, trend});
+            var value = percentage.res;
+            var trend = percentage.trend;
+            console.log("数值是 =", value, "趋势是", trend);
+            res.send({ total: c, contrast, value, trend });
           })
           .catch((err) => {
             console.log(err);
@@ -722,7 +751,7 @@ var getlogranking = function (req, res) {
   let Monthend = [];
   let strat = gtime(time[0]);
   let end = gtime(time[1]);
-  console.log("strat = ", strat,"end=",end)
+  console.log("strat = ", strat, "end=", end);
   let days = end - strat;
   let Res = new Array(days);
   let AttackType = { $ne: "Normal access" };
@@ -730,12 +759,12 @@ var getlogranking = function (req, res) {
     for (let i = 0; i <= days; i++) {
       arr.push(strat + i);
     }
-    console.log(arr)
+    console.log(arr);
     for (let i = 0; i < arr.length; i++) {
       Log.find({ attack_method: AttackType, timenumber: arr[i] })
         .count()
         .then((count) => {
-          console.log(i)
+          console.log(i);
           Res[i] = count;
         })
         .catch((err) => console.log(res));
@@ -754,7 +783,7 @@ var getlogranking = function (req, res) {
         .count()
         .then((count) => {
           console.log(count);
-          Res[i]= count;
+          Res[i] = count;
         })
         .catch((err) => console.log(res));
     }
@@ -788,7 +817,7 @@ var getAttckranking = function (req, res) {
     Log.find({ attack_method: Type[i], timenumber: { $gte: gl, $lte: lt } })
       .count()
       .then((count) => {
-        Attcktype[i]=Type[i];
+        Attcktype[i] = Type[i];
         Res[i] = count;
       })
       .catch((err) => console.log(res));
