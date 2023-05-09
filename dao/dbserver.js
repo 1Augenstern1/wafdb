@@ -183,23 +183,42 @@ var getRoles = function (req, res) {
 // 新增用户
 var addUser = function (req, res) {
   let { roles } = req;
-
-  role
-    .find({ roles: [roles] })
-    .then((role) => {
-      console.log(role[0]);
-      let ro = role[0];
-      // 在当前状态下返回的数据较为怪异需要转化后才能使用
-      let c = JSON.parse(JSON.stringify(ro));
-      req["token"] = c.token;
-      req["account"] = req.username;
-      let userinfo = new User(req);
-      userinfo.save();
-      res.send("ok");
+  console.log(req);
+  let UserExists = false;
+  User.find({ name: req.username })
+    .then((user) => {
+      console.log("user", user);
+      if (user !== []) {
+        UserExists = true;
+      }
     })
     .catch((err) => {
       console.log(err);
     });
+
+  setTimeout(() => {
+    // 角色不存在才创建
+    if (UserExists == false) {
+      role
+        .find({ roles: [roles] })
+        .then((role) => {
+          console.log(role[0]);
+          let ro = role[0];
+          // 在当前状态下返回的数据较为怪异需要转化后才能使用
+          let c = JSON.parse(JSON.stringify(ro));
+          req["token"] = c.token;
+          req["account"] = req.username;
+          let userinfo = new User(req);
+          userinfo.save();
+          res.send("用户创建成功");
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+    } else {
+      res.send("创建失败，用户已存在");
+    }
+  }, 300);
 };
 // 修改用户信息
 var update = function (req, res) {
@@ -217,6 +236,7 @@ var update = function (req, res) {
       User.findOneAndUpdate({ _id: req._id }, { $set: req })
         .then((info) => {
           console.log(info);
+          res.send("用户信息修改成功");
         })
         .catch((err) => {
           console.log(err);
@@ -265,29 +285,51 @@ var getAllRoutes = function (req, res) {
 var addOrUpdateRole = function (req, res) {
   //  新增
   let roles = req.roles;
-  req.roles = [];
-  req.roles.push(roles);
-  console.log(req);
-  if (req.avatar == undefined) {
-    req["role"] = req.name;
-    req["avatar"] =
-      "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif";
-    let newrole = new role(req);
-    console.log(newrole);
-    newrole.save();
-    res.send("创建用户成功");
-  }
-  // 修改
-  else {
+  let add = req.add;
+  let RoleExists = false;
+  // 检查新增的用户是否已经存在
+  if (add) {
     role
-      .findOneAndUpdate({ _id: req._id }, { $set: req })
-      .then((info) => {
-        res.send("修改用户成功");
+      .find({ name: req.name })
+      .then((req) => {
+        if (req !== []) {
+          RoleExists = true;
+        }
       })
       .catch((err) => {
         console.log(err);
       });
   }
+  req.roles = [];
+  req.roles.push(roles);
+  console.log(req);
+  setTimeout(() => {
+    if (RoleExists == false) {
+      if (req.avatar == undefined) {
+        req["role"] = req.name;
+        req["avatar"] =
+          "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif";
+        let newrole = new role(req);
+        console.log(newrole);
+        newrole.save();
+        res.send("创建用户成功");
+      }
+      // 修改
+      else {
+        role
+          .findOneAndUpdate({ _id: req._id }, { $set: req })
+          .then((info) => {
+            res.send("修改用户成功");
+          })
+          .catch((err) => {
+            console.log(err);
+          });
+      }
+    } else {
+      res.send("创建用户失败，用户已存在");
+    }
+  }, 300);
+
   // 删除单个角色通过id
 };
 var removeRoleById = function (req, res) {
@@ -515,8 +557,7 @@ var getAllVisit = function (req, res) {
       // 有时间限制没有搜索条件
       var startdate = Number(times[0].substring(8, 10)); // 开始日
       var enddate = Number(times[1].substring(8, 10)); // 结束日
-      var startmonth =
-        times[0].substring(5, 7); //开始月
+      var startmonth = times[0].substring(5, 7); //开始月
       var endmonth = times[1].substring(5, 7); //结束月
       var startyear = times[0].substring(0, 4); //开始年
       var endyear = times[1].substring(0, 4); //结束年
@@ -542,40 +583,47 @@ var getAllVisit = function (req, res) {
       contrast = "与上一天相比访问变化";
     }
 
-    if (startdate < days || enddate < days || startmonth != endmonth || days<=27) {
+    if (
+      startdate < days ||
+      enddate < days ||
+      startmonth != endmonth ||
+      days <= 27
+    ) {
       if (startdate <= days) {
         console.log("1");
         glo = da - (days - startdate) - 1;
-        startmonth = "0" + (startmonth-1)
+        startmonth = "0" + (startmonth - 1);
       } else {
         glo = startdate - days - 1;
-
       }
       if (enddate <= days) {
         console.log("2");
         lto = da - (days - enddate) - 1;
-        endmonth = "0" + (endmonth-1)
+        endmonth = "0" + (endmonth - 1);
       } else {
         lto = enddate - days - 1;
       }
-      if(glo == 0){
-        glo = da
-        startmonth = "0" + (startmonth-1)
+      if (glo == 0) {
+        glo = da;
+        startmonth = "0" + (startmonth - 1);
       }
-      if(lto == 0){
-        lto = da
-        endmonth = "0" + (endmonth-1)
+      if (lto == 0) {
+        lto = da;
+        endmonth = "0" + (endmonth - 1);
       }
       console.log("下雨一星期内的 glo 和 lto", glo, lto);
-      console.log("下雨一星期内的 startmonth 和 endmonth", startmonth, endmonth);
-      glo = Number(startyear+startmonth+ glo)
-      lto = Number(endyear+endmonth+lto)
+      console.log(
+        "下雨一星期内的 startmonth 和 endmonth",
+        startmonth,
+        endmonth
+      );
+      glo = Number(startyear + startmonth + glo);
+      lto = Number(endyear + endmonth + lto);
       console.log("下雨一星期内的 glo 和 lto", glo, lto);
-      if(days== 6){
+      if (days == 6) {
         contrast = "与上一周相比访问变化";
-      }
-      else{
-        contrast = "与上一段时间相比访问变化"
+      } else {
+        contrast = "与上一段时间相比访问变化";
       }
     } else {
       glo = gl;
@@ -1015,7 +1063,6 @@ var getRuleList = function (req, res) {
         .limit(limit)
         .skip(skiptotal)
         .then((Rululist) => {
-          console.log(Rululist);
           res.send({ total: c, Rululist });
         })
         .catch((err) => {
@@ -1037,7 +1084,6 @@ var getRuleList = function (req, res) {
         .limit(limit)
         .skip(skiptotal)
         .then((Rululist) => {
-          console.log(Rululist);
           res.send({ total: b, Rululist });
         })
         .catch((err) => {
@@ -1049,9 +1095,25 @@ var getRuleList = function (req, res) {
 
 var putRule = function (req, res) {
   let { arr } = req;
-  re = new Rule(arr);
-  re.save();
-  res.send("ok");
+  let RuleExists = false;
+  console.log(arr);
+  Rule.find({ RuleType: arr.RuleType, rule: arr.rule })
+    .then((res) => {
+      if (res != []) {
+        RuleExists = true;
+      }
+    })
+    .catch(() => {});
+  setTimeout(() => {
+    // 规则已经存在
+    if (RuleExists == true) {
+      res.send("新建错误，规则已经存在")
+    } else {
+      re = new Rule(arr);
+      re.save();
+      res.send("规则新建成功");
+    }
+  }, 300);
 };
 var removeRuleByid = function (req, res) {
   let { id } = req;
