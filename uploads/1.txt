@@ -1,0 +1,56 @@
+cd /home/lqh/Desktop/nginx-1.21.3
+./configure  --add-module=/usr/local/src/ngx_waf
+sed -i 's/^\(CFLAGS.*\)/\1 -fstack-protector-strong -Wno-sign-compare/' objs/Makefile
+
+
+            cd /usr/local/src \
+        &&  git clone https://github.com/troydhanson/uthash.git \
+        &&  export LIB_UTHASH=/usr/local/src/uthash \
+        &&  cd /home/lqh/Desktop/nginx-1.21.3
+
+cd /usr/local/src/ngx_waf && git clone https://github.com/libinjection/libinjection.git inc/libinjection && cd /home/lqh/Desktop/nginx-1.21.3
+
+
+启动  nginx
+停止 ./nginx -s stop 
+查看进程 ps -ef | grep nginx
+配置文件重新加载  nginx -s reload
+
+
+nginx配置文件为3部分
+1、全局块
+	从配置文件开始到events块之间的内容。主要设置影响nginx服务器的整体运行的的配置文件、包括配置运行nginx服务器的用户（组）、允许生成worker process数、 进程PID存放路径、日志存放的路径和类型以及配置文件的引入等
+	worker_processes  1;/处理并发的数量， 越大越多
+2、events块
+	影响Nginx服务器与用户的网络链接，常用的设置包括开启对多workl process下的网络链接进行序列化，是否允许同时接受多个网络链接，选取哪种事件驱动模型来处理链接请求，每个wordprocess可以同时支持最大的连接数等
+	worker_connections  1024，最大连接数
+3、http块
+	是配置最为频繁的模块，
+	又分为两部分 http全局块和server块
+	
+	http块能够包括多个server块
+	http全局块配置的指令包括文件引入、MIME_TYPE定义、连接超时时间、单请求链接上限等
+	server块和虚拟主机有密切关系、虚拟主机从客户角度看，和一台独立的硬件主机是完全一样的，该技术是为了产生节省互联网服务器硬件成本
+		内部分为一个server全局快和多个location块
+
+
+4、实现nginx进行反向代理
+	1、首先安装tomcat服务器 ，默认开启端口为8080  
+	     启动tomcat ，来到tomcat的bin目录中， ./startup.sh 启动tomcat服务器（假如端口未开启 ，需要开启 firewall-cmd --add-port=8080/tcp -permanent）(firewall-cmd -reload) 查看已经开放端口号：firewall-cmd --list-all
+
+
+./configure --prefix=/usr/local/nginx --with-http_ssl_module --with-http_v2_module --with-http_realip_module --with-http_addition_module --with-http_sub_module --with-http_dav_module --with-http_flv_module --with-http_mp4_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_random_index_module --with-http_secure_link_module --with-http_slice_module --with-http_stub_status_module --with-http_auth_request_module --with-mail --with-mail_ssl_module --with-stream --with-stream_ssl_module --with-stream_realip_module --with-stream_geoip_module=dynamic --with-threads --add-module=/home/lqh/Desktop/ngx_devel_kit --add-module=/home/lqh/Desktop/lua-nginx-module --with-ld-opt="-Wl,-rpath,/usr/local/lib" --with-cc-opt="-I/usr/local/include/luajit-2.1 -O2 -fPIC"
+make -j2
+sudo make install
+
+install.bat /F /MW /LUA C:\Program Files (x86)\Lua\5.1 /P C:\Program Files (x86)\Lua\luarocks-3.9.1 /NOADMIN /SELFCONTAINED /Q
+
+
+mongod.exe --dbpath E:\mongoDB\data --logpath E:\mongoDB\logs\mongodb.log
+mongod.exe --dbpath E:\mongoDB\data --logpath E:\mongoDB\logs\mongodb.log --bind_ip_all
+
+
+'rt=$request_time ua="$upstream_addr" us="$upstream_status" ut="$upstream_response_time" ul="$upstream_response_length"';
+
+ ./service.sh restart
+systemctl status openresty.service

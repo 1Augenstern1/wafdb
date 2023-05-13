@@ -7,6 +7,9 @@ var Log = dbmodel.User.model("Logs");
 var Whiteips = dbmodel.User.model("Whiteips");
 var Blackips = dbmodel.User.model("Blackips");
 var Rule = dbmodel.User.model("Rules");
+const express = require("express");
+const fs = require("fs");
+const path = require("path");
 var login = function (req, res) {
   let { account, password } = req;
   User.find({ account, password })
@@ -188,7 +191,7 @@ var addUser = function (req, res) {
   User.find({ name: req.username })
     .then((user) => {
       console.log("user", user);
-      if (user !== []) {
+      if (user[0] != undefined) {
         UserExists = true;
       }
     })
@@ -292,7 +295,7 @@ var addOrUpdateRole = function (req, res) {
     role
       .find({ name: req.name })
       .then((req) => {
-        if (req !== []) {
+        if (req[0] != undefined) {
           RoleExists = true;
         }
       })
@@ -402,7 +405,7 @@ function percent(a, b) {
 }
 
 var getAlllogs = function (req, res) {
-  let { page, limit, AttackType, selectTime } = req;
+  let { page, limit, AttackType, selectTime, searchIp } = req;
   page = Number(page);
   limit = Number(limit);
   let skiptotal = (page - 1) * limit;
@@ -417,7 +420,10 @@ var getAlllogs = function (req, res) {
         AttackType = { $ne: "Normal access" };
       }
       var c = 0;
-      Log.find({ attack_method: AttackType })
+      Log.find({
+        client_ip: searchIp ? searchIp : { $exists: true },
+        attack_method: AttackType,
+      })
         .count()
         .then((total) => {
           c = total;
@@ -426,7 +432,11 @@ var getAlllogs = function (req, res) {
           console.log(err);
         });
       setTimeout(() => {
-        Log.find({ attack_method: AttackType })
+        Log.find({
+          client_ip: searchIp ? searchIp : { $exists: true },
+          attack_method: AttackType,
+        })
+          .sort({ _id: -1 })
           .limit(limit)
           .skip(skiptotal)
           .then((logs) => {
@@ -445,7 +455,10 @@ var getAlllogs = function (req, res) {
     }
     if (AttackType == "") {
       console.log("noAttackType");
-      Log.find({ timenumber: { $gte: gl, $lte: lt } })
+      Log.find({
+        client_ip: searchIp ? searchIp : { $exists: true },
+        timenumber: { $gte: gl, $lte: lt },
+      })
         .count()
         .then((total) => {
           c = total;
@@ -454,7 +467,11 @@ var getAlllogs = function (req, res) {
           console.log(err);
         });
       setTimeout(() => {
-        Log.find({ timenumber: { $gte: gl, $lte: lt } })
+        Log.find({
+          client_ip: searchIp ? searchIp : { $exists: true },
+          timenumber: { $gte: gl, $lte: lt },
+        })
+          .sort({ _id: -1 })
           .limit(limit)
           .skip(skiptotal)
           .then((logs) => {
@@ -472,6 +489,7 @@ var getAlllogs = function (req, res) {
       }
       console.log("douyou");
       Log.find({
+        client_ip: searchIp ? searchIp : { $exists: true },
         attack_method: AttackType,
         timenumber: { $gte: gl, $lte: lt },
       })
@@ -484,9 +502,11 @@ var getAlllogs = function (req, res) {
         });
       setTimeout(() => {
         Log.find({
+          client_ip: searchIp ? searchIp : { $exists: true },
           attack_method: AttackType,
           timenumber: { $gte: gl, $lte: lt },
         })
+          .sort({ _id: -1 })
           .limit(limit)
           .skip(skiptotal)
           .then((logs) => {
@@ -499,11 +519,12 @@ var getAlllogs = function (req, res) {
     }
   } else {
     console.log("无条件搜索");
-    Log.find()
+    Log.find({ client_ip: searchIp ? searchIp : { $exists: true } })
+      .sort({ _id: -1 })
       .limit(limit)
       .skip(skiptotal)
       .then((logs) => {
-        Log.find()
+        Log.find({ client_ip: searchIp ? searchIp : { $exists: true } })
           .count()
           .then((total) => {
             console.log(total);
@@ -874,7 +895,6 @@ var getAttckranking = function (req, res) {
     res.send({ Attckdata: Res, AttcktypeArr: Attcktype });
   }, 100);
 };
-
 // 添加黑名单
 var addblackIp = function (req, res) {
   let blackUser = new Blackips(req);
@@ -1060,6 +1080,7 @@ var getRuleList = function (req, res) {
       });
     setTimeout(() => {
       Rule.find({ RuleType: RuleType, rule: searchRule })
+        .sort({ _id: -1 })
         .limit(limit)
         .skip(skiptotal)
         .then((Rululist) => {
@@ -1081,6 +1102,7 @@ var getRuleList = function (req, res) {
       });
     setTimeout(() => {
       Rule.find({ RuleType: RuleType })
+        .sort({ _id: -1 })
         .limit(limit)
         .skip(skiptotal)
         .then((Rululist) => {
@@ -1092,28 +1114,59 @@ var getRuleList = function (req, res) {
     }, 100);
   }
 };
-
+// 添加规则
 var putRule = function (req, res) {
   let { arr } = req;
   let RuleExists = false;
-  console.log(arr);
   Rule.find({ RuleType: arr.RuleType, rule: arr.rule })
     .then((res) => {
-      if (res != []) {
+      console.log(res[0]);
+      if (res[0] != undefined) {
         RuleExists = true;
       }
     })
     .catch(() => {});
   setTimeout(() => {
+    console.log(RuleExists);
     // 规则已经存在
     if (RuleExists == true) {
-      res.send("新建错误，规则已经存在")
+      res.send("新建错误，规则已经存在");
     } else {
       re = new Rule(arr);
       re.save();
       res.send("规则新建成功");
     }
   }, 300);
+};
+//
+var putRules = function (req, res) {
+  let { Rules } = req;
+  console.log(Rules);
+  let RuleExists = false;
+  let name = Rules.textname;
+  const filePath = path.join(__dirname, "..", "uploads", "frist.txt");
+  fs.readFile(filePath, { encoding: "utf-8" }, (err, data) => {
+    if (err) {
+      console.log(err);
+      res.send("读取文件失败,请查看上传文件名字是否符合要求");
+    } else {
+      const lines = data.split("\n");
+      const newArray = lines.map((line) => line.trim()); // 假设您需要去除每行的空格
+      for (let i = 0; i < newArray.length; i++) {
+        Rule.find({ RuleType: Rules.RuleType, rule: newArray[i] })
+        .then((res) => {
+          if(res[0] == undefined){   
+            Rules['rule'] = newArray[i]
+            re = new Rule(Rules);
+            console.log(re)
+            re.save();
+          }
+        })
+        .catch((err) => {console.log(err)});
+      }
+      res.send("规则集新建成功")
+    }
+  });
 };
 var removeRuleByid = function (req, res) {
   let { id } = req;
@@ -1158,6 +1211,7 @@ module.exports = {
   getvisitIp,
   getRuleList,
   putRule,
+  putRules,
   removeRuleByid,
   //changedata
 };

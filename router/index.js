@@ -169,10 +169,15 @@ router.get("/getRuleList", (req,res)=>{
   console.log('getRuleList')
   dbserver.getRuleList(req.query,res)
 })
-
+// 添加规则
 router.post("/putRule" , (req,res)=>{
   console.log('putRule')
   dbserver.putRule(req.body,res)
+})
+// 添加规则集
+router.post("/putRules" , (req,res)=>{
+  console.log('putRules')
+  dbserver.putRules(req.body,res)
 })
 // 删除规则通过id
 router.post("/removeRuleByid" , (req,res)=>{

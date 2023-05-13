@@ -1,0 +1,250 @@
+在 OpenResty 上实现基于 Nginx 的加权最小连接法的负载均衡算法，可以按照以下步骤进行：
+
+确定后端服务器
+首先，需要确定将要进行负载均衡的后端服务器列表，并为每个服务器分配一个权重，以便更好地控制流量。
+
+可以在 Nginx 配置文件中通过以下方式定义后端服务器列表：
+
+markdown
+Copy code
+upstream backend {
+    server 192.168.0.1 weight=5;
+    server 192.168.0.2 weight=3;
+    server 192.168.0.3 weight=2;
+}
+上面的配置定义了一个名为 backend 的服务器组，其中包含了三个后端服务器，并且对于第一个服务器分配了权重为 5，第二个服务器分配了权重为 3，第三个服务器分配了权重为 2。
+
+定义 Nginx 变量
+在 OpenResty 中，可以通过 $variable_name 的方式定义 Nginx 变量，其中 variable_name 为变量名称。
+
+例如，可以通过以下方式定义一个名为 backend_conn_count 的变量：
+
+bash
+Copy code
+http {
+    ...
+    upstream backend {
+        ...
+    }
+    ...
+    server {
+        ...
+        set $backend_conn_count 0;
+        ...
+    }
+}
+定义 Lua 脚本
+接下来，可以编写一个 Lua 脚本，用于实现加权最小连接法的负载均衡算法。可以将该脚本存储在 OpenResty 的任何一个 Lua 应用程序中，并在 Nginx 配置文件中进行调用。
+
+下面是一个简单的示例 Lua 脚本，用于实现加权最小连接法的负载均衡算法：
+
+lua
+Copy code
+local upstream_name = 'backend'
+
+-- 获取 upstream
+local upstream = ngx.shared[upstream_name]
+if not upstream then
+    ngx.log(ngx.ERR, 'no upstream found')
+    return ngx.exit(500)
+end
+
+-- 获取所有服务器
+local servers = upstream:get_servers()
+
+-- 获取总连接数
+local conn_count = 0
+for _, server in ipairs(servers) do
+    local conn = upstream:get_conn_count(server)
+    conn_count = conn_count + conn
+end
+
+-- 获取最小连接数
+local min_conn = math.huge
+for _, server in ipairs(servers) do
+    local conn = upstream:get_conn_count(server)
+    local weight = server.weight
+    local cur_conn = conn / weight
+    if cur_conn < min_conn then
+        min_conn = cur_conn
+    end
+end
+
+-- 获取最小连接数的服务器
+local min_servers = {}
+for _, server in ipairs(servers) do
+    local conn = upstream:get_conn_count(server)
+    local weight = server.weight
+    local cur_conn = conn / weight
+    if cur_conn == min_conn then
+        table.insert(min_servers, server)
+    end
+end
+
+-- 随机选择一个最小连接数的服务器
+local server = min_servers[math.random(#min_servers)]
+
+-- 增加连接数
+upstream:incr_conn_count(server)
+
+-- 返回选中的服务器地址
+ngx.var.upstream_host = server.addr
+
+
+
+
+梁青浩
+继续写
+步骤2：计算节点权重和最小值
+
+接下来，我们需要计算每个节点的权重和最小值，并将其与所有节点的权重和进行比较，选择最小的那个节点。
+
+我们先定义一个 total_weight 变量用于计算所有节点的权重和。然后我们遍历每个节点，计算它的权重和最小值，并将它们分别存储在 node_weight 和 node_min 变量中。最后，我们将所有节点的权重和 total_weight 进行比较，选择权重和最小的那个节点。
+
+lua
+Copy code
+local total_weight = 0
+local selected_node
+for _, node in ipairs(nodes) do
+  local weight = get_weight(node)
+  total_weight = total_weight + weight
+  local node_weight = node_stats[node].weight
+  local node_min = node_stats[node].conns / weight
+  if not selected_node or node_min < node_stats[selected_node].conns / get_weight(selected_node) then
+    selected_node = node
+  end
+end
+在这个循环中，我们使用 ipairs 遍历所有节点。对于每个节点，我们首先调用 get_weight 函数获取它的权重。然后我们使用 node_stats 表格中存储的信息计算节点的权重和最小值。最后，我们将当前节点与已选节点比较，并根据需要更新已选节点。
+
+步骤3：更新连接数统计信息
+
+最后，我们需要更新连接数统计信息，以反映刚才选择的节点被选中的情况。
+
+css
+Copy code
+node_stats[selected_node].conns = node_stats[selected_node].conns + 1
+在这行代码中，我们简单地增加已选节点的连接数。
+
+完整代码如下：
+
+lua
+Copy code
+local function lb()
+  -- 获取所有可用节点
+  local nodes = get_nodes()
+
+  -- 计算总权重和每个节点的权重和最小值
+  local total_weight = 0
+  local selected_node
+  for _, node in ipairs(nodes) do
+    local weight = get_weight(node)
+    total_weight = total_weight + weight
+    local node_weight = node_stats[node].weight
+    local node_min = node_stats[node].conns / weight
+    if not selected_node or node_min < node_stats[selected_node].conns / get_weight(selected_node) then
+      selected_node = node
+    end
+  end
+
+  -- 更新连接数统计信息
+  node_stats[selected_node].conns = node_stats[selected_node].conns + 1
+
+  -- 返回被选中的节点的地址
+  return selected_node
+end
+以上就是基于种子改进的加权最小连接法的负载均衡算法的实现。当您使用 OpenResty 编写负载均衡代码时，可以根据实际需求进行相应的修改和优化。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+提问
+#user  nobody;
+worker_processes  1;
+
+#error_log  logs/error.log;
+#error_log  logs/error.log  notice;
+#error_log  logs/error.log  info;
+
+#pid        logs/nginx.pid;
+
+
+events {
+    worker_connections  1024;
+}
+
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    log_format mylog '$remote_addr - $remote_user [$time_local] '
+                 '"$request" $status $body_bytes_sent '
+                 '"$http_referer" "$http_user_agent" '
+                 'rt=$request_time ua="$upstream_addr" us="$upstream_status" ut="$upstream_response_time" ul="$upstream_response_length"';
+
+    access_log logs/access.log mylog;
+    lua_shared_dict limit 50m;
+
+
+    
+    lua_package_path "/usr/local/openresty/nginx/conf/waf/?.lua";
+    init_by_lua_file "/usr/local/openresty/nginx/conf/waf/init.lua";
+    access_by_lua_file "/usr/local/openresty/nginx/conf/waf/access.lua";
+    sendfile        on;
+
+    lua_need_request_body on;
+
+    keepalive_timeout  65;
+
+    server {
+        listen       80;
+        server_name  localhost;
+
+
+
+
+        location / {
+            set $weight4 5;
+            proxy_pass http://myapp ;
+        }
+
+	    location /hello {
+            default_type text/html;
+            content_by_lua_block {
+                ngx.say("<p>hello, world</p>")
+            }
+        }
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   html;
+        }
+
+    }
+
+        upstream myapp {
+
+            server 127.0.0.1:8001 weight=4 max_fails=3 fail_timeout=30s;
+            server 127.0.0.1:8002 weight=1 max_fails=3 fail_timeout=30s;
+            server 127.0.0.1:8003 weight=1 max_fails=3 fail_timeout=30s;
+    }
+}
+下面这一部分是waf初始化与使用的内容
+    lua_package_path "/usr/local/openresty/nginx/conf/waf/?.lua";
+    init_by_lua_file "/usr/local/openresty/nginx/conf/waf/init.lua";
+    access_by_lua_file "/usr/local/openresty/nginx/conf/waf/access.lua";
+在此基础上如何实现一个改进的加权最小连接法
