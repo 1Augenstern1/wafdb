@@ -287,15 +287,16 @@ var getAllRoutes = function (req, res) {
 // 新增或者修改一个角色
 var addOrUpdateRole = function (req, res) {
   //  新增
-  let roles = req.roles;
+  let roledata = req.role
+  let newrole = roledata;
   let add = req.add;
   let RoleExists = false;
   // 检查新增的用户是否已经存在
   if (add) {
-    role
-      .find({ name: req.name })
-      .then((req) => {
-        if (req[0] != undefined) {
+    role.find({ name: newrole.name })
+      .then((ro) => {
+        if (ro[0] != undefined) {
+          console.log('存在了')
           RoleExists = true;
         }
       })
@@ -303,24 +304,28 @@ var addOrUpdateRole = function (req, res) {
         console.log(err);
       });
   }
-  req.roles = [];
-  req.roles.push(roles);
-  console.log(req);
+  console.log("newrole =", newrole)
+  newrole["roles"] = [roledata.roles];
+  console.log(roledata)
+
+
   setTimeout(() => {
     if (RoleExists == false) {
-      if (req.avatar == undefined) {
-        req["role"] = req.name;
-        req["avatar"] =
+      if (newrole.avatar == undefined) {
+        console.log('新建')
+        // newrole["role"] = req.name;
+        newrole["avatar"] =
           "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif";
-        let newrole = new role(req);
-        console.log(newrole);
-        newrole.save();
+        let nerole = new role(newrole);
+        console.log("newrole",nerole);
+        nerole.save();
         res.send("创建用户成功");
       }
       // 修改
       else {
+        console.log('修改')
         role
-          .findOneAndUpdate({ _id: req._id }, { $set: req })
+          .findOneAndUpdate({ _id: newrole._id }, { $set: newrole })
           .then((info) => {
             res.send("修改用户成功");
           })
@@ -586,10 +591,14 @@ var getAllVisit = function (req, res) {
       gl = gtime(times[0]);
       lt = gtime(times[1]);
       if (startmonth == endmonth) {
+        // 月份时长
         da = getMonthLength(startyear, startmonth - 1);
+        // 选取时间段
         days = enddate - startdate;
+        // 当选着的时间不在同一个月份时
       } else {
         da = getMonthLength(startyear, startmonth);
+  
         days = da - startdate + enddate;
       }
       console.log("startmonth = ", startmonth, "endmonth =", endmonth);
@@ -597,40 +606,49 @@ var getAllVisit = function (req, res) {
       console.log("days = ", days);
     }
     console.log("gl 和 lt", gl, lt);
-    // 假如选择的是一天
+    // 假如选择的是某一天
     if (days == 0) {
       glo = gl;
       lto = lt;
       contrast = "与上一天相比访问变化";
     }
-
+    // 假如选择的是小于一个月份的时间
     if (
       startdate < days ||
       enddate < days ||
       startmonth != endmonth ||
       days <= 27
     ) {
+      // 对比的开始时间往前推了一个月
       if (startdate <= days) {
         console.log("1");
         glo = da - (days - startdate) - 1;
-        startmonth = "0" + (startmonth - 1);
+          startmonth = "0" + (startmonth - 1);
       } else {
+      // 还在当月
         glo = startdate - days - 1;
       }
       if (enddate <= days) {
+      // 对比的开始和结束时间都往前退一个月
         console.log("2");
         lto = da - (days - enddate) - 1;
-        endmonth = "0" + (endmonth - 1);
+          endmonth = "0" + (endmonth - 1);
       } else {
         lto = enddate - days - 1;
       }
-      if (glo == 0) {
+      if (glo == 0 && startmonth<11) {
         glo = da;
         startmonth = "0" + (startmonth - 1);
       }
-      if (lto == 0) {
+      if (lto == 0 && endmonth<11) {
         lto = da;
         endmonth = "0" + (endmonth - 1);
+      }
+      if(glo < 10){
+        glo = '0' +glo
+      }
+      if(lto < 10){
+        lto = '0' +lto
       }
       console.log("下雨一星期内的 glo 和 lto", glo, lto);
       console.log(
